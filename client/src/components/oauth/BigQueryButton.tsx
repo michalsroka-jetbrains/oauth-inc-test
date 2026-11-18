@@ -1,19 +1,39 @@
-import React from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { BigQueryRow, fetchBigQueryData } from '../../api/apiClient';
 
 const BigQueryButton: React.FC = () => {
-    const handleBigQueryRequest = () => {
-        axios
-            .get('http://localhost:8000/api/bigquery/data', { withCredentials: true })
-            .then((response) => {
-                console.log('BigQuery data:', response.data);
-            })
-            .catch((error) => {
-                console.error('Error fetching BigQuery data:', error);
-            });
+    const [rows, setRows] = useState<BigQueryRow[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleBigQueryRequest = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await fetchBigQueryData());
+        } catch (e) {
+            console.error('Error fetching BigQuery data:', e);
+            setError('Could not fetch BigQuery data.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    return <button onClick={handleBigQueryRequest}>Fetch BigQuery Data</button>;
+    return (
+        <div>
+            <button onClick={handleBigQueryRequest} disabled={loading}>
+                {loading ? 'Fetching…' : 'Fetch BigQuery Data'}
+            </button>
+            {error && <p className="error">{error}</p>}
+            {rows.length > 0 && (
+                <ul>
+                    {rows.map((row, index) => (
+                        <li key={index}>{(row.f ?? []).map((cell) => String(cell.v)).join(' · ')}</li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
 };
 
 export default BigQueryButton;
